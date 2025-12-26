@@ -6,7 +6,8 @@ import {
     faUserSecret, faVolumeMute
 } from '@fortawesome/free-solid-svg-icons';
 
-const GROQ_KEY = "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";
+// --- FIXED: Using the correct variable name from your .env ---
+const apiKey = import.meta.env.VITE_GROQ_API_KEY;
 const FEMALE_AI_LOGO = "https://cdn-icons-png.flaticon.com/512/4140/4140047.png"; 
 
 const CSAMAssistAyanEdition = () => {
@@ -22,35 +23,26 @@ const CSAMAssistAyanEdition = () => {
     const [scanningId, setScanningId] = useState(null);
     const chatEndRef = useRef(null);
 
-    // --- FIX: Strict Female Voice Logic ---
     const speak = (text) => {
-        window.speechSynthesis.cancel(); // Purani voice band karo
+        window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
-        
-        // Sabhi available voices nikalo
         const voices = window.speechSynthesis.getVoices();
         
-        // Strict Filter for Female Voices (Google US Female, Microsoft Zira, Samantha, etc.)
         const femaleVoice = voices.find(v => 
             (v.name.includes('Female') || v.name.includes('Samantha') || v.name.includes('Zira') || v.name.includes('Google US English')) && 
             v.lang.includes('en')
-        ) || voices.find(v => v.lang.startsWith('en')); // Fallback to any English voice
+        ) || voices.find(v => v.lang.startsWith('en'));
 
-        if (femaleVoice) {
-            utterance.voice = femaleVoice;
-        }
-
-        utterance.pitch = 1.1; // Thodi soft voice ke liye
-        utterance.rate = 1.0;  // Normal speed
+        if (femaleVoice) utterance.voice = femaleVoice;
+        utterance.pitch = 1.1;
+        utterance.rate = 1.0;
         utterance.onstart = () => setIsSpeaking(true);
         utterance.onend = () => setIsSpeaking(false);
-        
         window.speechSynthesis.speak(utterance);
     };
 
     const stopSpeaking = () => { window.speechSynthesis.cancel(); setIsSpeaking(false); };
 
-    // Voices load hone ka wait karein (Browser fix)
     useEffect(() => {
         const loadVoices = () => window.speechSynthesis.getVoices();
         loadVoices();
@@ -71,7 +63,11 @@ const CSAMAssistAyanEdition = () => {
         try {
             const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method: "POST",
-                headers: { "Authorization": `Bearer ${GROQ_KEY}`, "Content-Type": "application/json" },
+                headers: { 
+                    // --- FIXED: Changed Bearer token to use 'apiKey' variable ---
+                    "Authorization": `Bearer ${apiKey}`, 
+                    "Content-Type": "application/json" 
+                },
                 body: JSON.stringify({ 
                     model: "llama-3.3-70b-versatile", 
                     messages: [{ 
@@ -81,10 +77,21 @@ const CSAMAssistAyanEdition = () => {
                 })
             });
             const data = await res.json();
-            const reply = data.choices[0].message.content;
-            setMessages(prev => [...prev, { role: 'ai', text: reply }]);
-            speak(reply); // Female voice trigger
-        } catch (err) { console.error(err); } finally { setIsLoading(false); }
+            
+            // --- FIXED: Handling potential API errors gracefully ---
+            if (data.choices && data.choices[0]) {
+                const reply = data.choices[0].message.content;
+                setMessages(prev => [...prev, { role: 'ai', text: reply }]);
+                speak(reply);
+            } else {
+                throw new Error("Invalid API Response");
+            }
+        } catch (err) { 
+            console.error("Chat Error:", err);
+            setMessages(prev => [...prev, { role: 'ai', text: "Sorry, I am having trouble connecting to the secure server. Please check your API key." }]);
+        } finally { 
+            setIsLoading(false); 
+        }
     };
 
     const runSafetyTest = (id) => {
@@ -190,7 +197,6 @@ const CSAMAssistAyanEdition = () => {
     );
 };
 
-// --- CSS Styles ---
 const styles = {
     container: { background: '#ffffff', minHeight: '100vh', fontFamily: "'Inter', sans-serif", color: '#1e293b' },
     nav: { display:'flex', justifyContent:'space-between', alignItems:'center', padding:'20px 80px', borderBottom:'1px solid #f1f5f9', background:'#fff', position:'sticky', top:0, zIndex:100 },
