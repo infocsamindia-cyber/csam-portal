@@ -404,3 +404,18 @@ body {
     font-style: italic;
 }
 
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+@keyframes scanning {
+  0% { top: 0; }
+  100% { top: 100%; }
+}
+
+input:focus {
+  background: rgba(0, 210, 255, 0.1) !important;
+  border-bottom: 2px solid #00d2ff !important;
+  box-shadow: 0 5px 15px rgba(0, 210, 255, 0.1);
+}

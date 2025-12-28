@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
-    faPaperPlane, faHeadset, faMinus, faCheckCircle, faLock, 
-    faFileShield, faGlobe, faFingerprint, faTerminal, 
-    faUserSecret, faVolumeMute
+    faPaperPlane, faHeadset, faLock, faArrowLeft, faGlobe, 
+    faShieldAlt, faCircle, faInfoCircle, faStopCircle,
+    faLink, faKey, faUserCheck
 } from '@fortawesome/free-solid-svg-icons';
 
-// --- FIXED: Using the correct variable name from your .env ---
 const apiKey = import.meta.env.VITE_GROQ_API_KEY;
 const FEMALE_AI_LOGO = "https://cdn-icons-png.flaticon.com/512/4140/4140047.png"; 
 
@@ -16,45 +15,68 @@ const CSAMAssistAyanEdition = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [messages, setMessages] = useState([
-        { role: 'ai', text: "System Online. I am your Cyber Assistant, developed by Ayan Ansari. How can I help you today?" }
+        { role: 'ai', text: "Hello! I am CSAM Assistant, developed by Ayan Ansari. How can I help you with Cyber Security today?" }
     ]);
     
-    const [testResults, setTestResults] = useState({});
-    const [scanningId, setScanningId] = useState(null);
+    const [ipData, setIpData] = useState("Click to Scan");
+    const [passStrength, setPassStrength] = useState({ text: "WAITING", color: "#94a3b8" });
+    const [generatedPass, setGeneratedPass] = useState("");
     const chatEndRef = useRef(null);
+
+    useEffect(() => {
+        if (isChatOpen) chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages, isChatOpen]);
 
     const speak = (text) => {
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
-        const voices = window.speechSynthesis.getVoices();
-        
-        const femaleVoice = voices.find(v => 
-            (v.name.includes('Female') || v.name.includes('Samantha') || v.name.includes('Zira') || v.name.includes('Google US English')) && 
-            v.lang.includes('en')
-        ) || voices.find(v => v.lang.startsWith('en'));
-
-        if (femaleVoice) utterance.voice = femaleVoice;
-        utterance.pitch = 1.1;
-        utterance.rate = 1.0;
         utterance.onstart = () => setIsSpeaking(true);
         utterance.onend = () => setIsSpeaking(false);
         window.speechSynthesis.speak(utterance);
     };
 
-    const stopSpeaking = () => { window.speechSynthesis.cancel(); setIsSpeaking(false); };
+    const stopSpeaking = () => {
+        window.speechSynthesis.cancel();
+        setIsSpeaking(false);
+    };
 
-    useEffect(() => {
-        const loadVoices = () => window.speechSynthesis.getVoices();
-        loadVoices();
-        if (window.speechSynthesis.onvoiceschanged !== undefined) {
-            window.speechSynthesis.onvoiceschanged = loadVoices;
+    const fetchIPInfo = async () => {
+        setIpData("Scanning...");
+        try {
+            const res = await fetch("https://api.ipify.org?format=json");
+            const data = await res.json();
+            setIpData(data.ip);
+        } catch (err) { setIpData("Scan Error"); }
+    };
+
+    const generateSecurePass = () => {
+        const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+        let pass = "";
+        for(let i=0; i<12; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
+        setGeneratedPass(pass);
+        alert("Generated Password: " + pass);
+    };
+
+    const checkLinkSafety = () => {
+        const link = prompt("Enter URL to scan:");
+        if(!link) return;
+        if(link.includes("http://") || link.includes("bit.ly")) {
+            alert("⚠️ WARNING: This link looks suspicious (Unencrypted or Shortened).");
+        } else {
+            alert("✅ Secure: This link uses HTTPS and looks safe.");
         }
-    }, []);
+    };
+
+    const handlePassCheck = (val) => {
+        if (!val) return setPassStrength({ text: "WAITING", color: "#94a3b8" });
+        if (val.length < 5) return setPassStrength({ text: "WEAK", color: "#ef4444" });
+        if (val.length < 10) return setPassStrength({ text: "GOOD", color: "#f59e0b" });
+        return setPassStrength({ text: "EXCELLENT", color: "#22c55e" });
+    };
 
     const handleSend = async (e) => {
         if (e) e.preventDefault();
         if (!inputValue.trim() || isLoading) return;
-        
         const userMsg = inputValue;
         setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
         setInputValue("");
@@ -63,126 +85,130 @@ const CSAMAssistAyanEdition = () => {
         try {
             const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method: "POST",
-                headers: { 
-                    // --- FIXED: Changed Bearer token to use 'apiKey' variable ---
-                    "Authorization": `Bearer ${apiKey}`, 
-                    "Content-Type": "application/json" 
-                },
+                headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
                 body: JSON.stringify({ 
                     model: "llama-3.3-70b-versatile", 
-                    messages: [{ 
-                        role: "system", 
-                        content: "You are an AI Cyber Security Expert developed by Ayan Ansari. Respond ONLY in English." 
-                    }, { role: "user", content: userMsg }] 
+                    messages: [
+                        { role: "system", content: "Your name is CSAM Assistant. You are developed by Ayan Ansari, who is a BCA student and a passionate Ethical Hacker/Cyber Security enthusiast. When someone asks about you or your developer, always mention Ayan Ansari and his background in BCA and Cyber Security with pride. Your goal is to provide expert security advice while maintaining the identity of Ayan's creation." }, 
+                        { role: "user", content: userMsg }
+                    ] 
                 })
             });
             const data = await res.json();
-            
-            // --- FIXED: Handling potential API errors gracefully ---
-            if (data.choices && data.choices[0]) {
-                const reply = data.choices[0].message.content;
-                setMessages(prev => [...prev, { role: 'ai', text: reply }]);
-                speak(reply);
-            } else {
-                throw new Error("Invalid API Response");
-            }
+            const reply = data.choices[0].message.content;
+            setMessages(prev => [...prev, { role: 'ai', text: reply }]);
+            speak(reply);
         } catch (err) { 
-            console.error("Chat Error:", err);
-            setMessages(prev => [...prev, { role: 'ai', text: "Sorry, I am having trouble connecting to the secure server. Please check your API key." }]);
-        } finally { 
-            setIsLoading(false); 
-        }
+            setMessages(prev => [...prev, { role: 'ai', text: "Error connecting to server." }]); 
+        } finally { setIsLoading(false); }
     };
-
-    const runSafetyTest = (id) => {
-        setScanningId(id);
-        setTimeout(() => {
-            setTestResults(prev => ({ ...prev, [id]: "PASSED" }));
-            setScanningId(null);
-        }, 1200);
-    };
-
-    useEffect(() => { 
-        chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); 
-    }, [messages]);
 
     return (
         <div style={styles.container}>
             <style>{`
-                @media (max-width: 768px) {
-                    .nav-desktop { padding: 15px 20px !important; }
-                    .hero-title { font-size: 32px !important; }
-                    .dashboard-grid { grid-template-columns: 1fr !important; padding: 20px !important; }
-                    .chat-box-main { width: 100% !important; height: 100% !important; bottom: 0 !important; right: 0 !important; border-radius: 0 !important; }
-                    .status-badge-top { display: none !important; }
+                @keyframes glow {
+                    0% { box-shadow: 0 0 5px rgba(37, 99, 235, 0.2); }
+                    50% { box-shadow: 0 0 15px rgba(37, 99, 235, 0.6); }
+                    100% { box-shadow: 0 0 5px rgba(37, 99, 235, 0.2); }
+                }
+                .dev-badge-home {
+                    animation: glow 2s infinite;
+                    display: inline-flex;
+                    align-items: center;
+                    background: #0f172a;
+                    color: #fff;
+                    padding: 6px 15px;
+                    border-radius: 20px;
+                    font-size: 11px;
+                    font-weight: 700;
+                    margin-bottom: 15px;
+                    border: 1px solid #2563EB;
                 }
             `}</style>
 
-            <nav className="nav-desktop" style={styles.nav}>
+            <nav style={styles.nav}>
                 <div style={styles.logoGroup}>
-                    <FontAwesomeIcon icon={faFingerprint} style={styles.topIcon} />
-                    <span style={styles.logoTitle}>AYAN<span style={{color:'#2563EB'}}>CYBER</span></span>
+                    <FontAwesomeIcon icon={faShieldAlt} style={{color:'#2563EB', fontSize:'22px'}} />
+                    <span style={styles.logoText}>AYAN<span style={{color:'#2563EB'}}>CORE</span></span>
                 </div>
-                <div className="status-badge-top" style={styles.statusBadge}>
-                    <span style={styles.pulseDot}></span> SYSTEM LIVE: BY AYAN ANSARI
-                </div>
+                <div style={styles.status}><FontAwesomeIcon icon={faCircle} style={{color:'#22c55e', fontSize:'8px'}} /> ONLINE</div>
             </nav>
 
-            <header style={styles.hero}>
-                <div style={styles.terminalTag}><FontAwesomeIcon icon={faTerminal} /> Secure Protocol v2.5</div>
-                <h1 className="hero-title" style={styles.heroMainTitle}>Advanced Cyber Security <br/> <span style={{color:'#2563EB'}}>Assistant Portal</span></h1>
-                <p style={styles.heroDescription}>Designed by <b>Ayan Ansari</b> (BCA Student & Cyber Security Enthusiast).</p>
-                <button style={styles.mainBtn} onClick={() => setIsChatOpen(true)}>Initialize Assistant</button>
-            </header>
+            <div style={{padding: '20px', paddingBottom: '100px'}}>
+                <header style={styles.hero}>
+                    {/* Yahan par Header wala badge shift kar diya hai */}
+                    <div className="dev-badge-home">
+                        <FontAwesomeIcon icon={faUserCheck} style={{marginRight:'8px', color:'#3b82f6'}} />
+                        DEVELOPED BY AYAN ANSARI
+                    </div>
+                    <h1 style={styles.heroTitle}>Security Portal</h1>
+                    <p style={styles.heroSub}>BCA Cyber Security Professional Project</p>
+                </header>
 
-            <section className="dashboard-grid" style={styles.dashboard}>
-                <div style={styles.grid}>
-                    {[
-                        { id: 1, icon: faUserSecret, title: "Anonymity Check", desc: "VPN & Proxy layers" },
-                        { id: 2, icon: faLock, title: "Vault Security", desc: "Encryption strength" },
-                        { id: 3, icon: faGlobe, title: "IP Integrity", desc: "Network gateway" },
-                        { id: 4, icon: faFileShield, title: "Exploit Scan", desc: "Vulnerability test" }
-                    ].map((m) => (
-                        <div key={m.id} style={styles.card} onClick={() => runSafetyTest(m.id)}>
-                            <FontAwesomeIcon icon={m.icon} style={styles.cardIcon} />
-                            <h4>{m.title}</h4>
-                            <p style={{fontSize:'13px'}}>{m.desc}</p>
-                            <div style={styles.statusLine}>
-                                {scanningId === m.id ? <div className="scan-anim" style={styles.scanBar}></div> : 
-                                testResults[m.id] ? <span style={styles.successText}><FontAwesomeIcon icon={faCheckCircle} /> SECURE</span> : 
-                                <span style={styles.runText}>Run Audit</span>}
-                            </div>
-                        </div>
-                    ))}
+                <div style={styles.helpBox}>
+                    <h3 style={styles.helpTitle}><FontAwesomeIcon icon={faInfoCircle} /> Active Security Tools</h3>
+                    <p style={styles.helpText}>Workable tools to audit your digital safety instantly.</p>
                 </div>
-            </section>
 
-            {isChatOpen && (
-                <div className="chat-box-main" style={styles.chatBox}>
-                    <div style={styles.chatHeader}>
-                        <div style={{display:'flex', gap:'10px', alignItems:'center'}}>
-                            <img src={FEMALE_AI_LOGO} alt="AI" style={styles.aiLogoImg} />
-                            <div>
-                                <div style={{fontSize:'14px', fontWeight:700}}>Security Assistant</div>
-                                <div style={{fontSize:'10px', color:'#bfdbfe'}}>Ayan Ansari Edition</div>
-                            </div>
-                        </div>
-                        <div style={{display:'flex', gap:'12px'}}>
-                            {isSpeaking && <FontAwesomeIcon icon={faVolumeMute} onClick={stopSpeaking} style={{cursor:'pointer'}} />}
-                            <FontAwesomeIcon icon={faMinus} onClick={() => setIsChatOpen(false)} style={{cursor:'pointer'}} />
+                <div style={styles.grid}>
+                    <div style={styles.card} onClick={fetchIPInfo}>
+                        <div style={styles.iconWrapper}><FontAwesomeIcon icon={faGlobe} /></div>
+                        <div style={{flex: 1}}>
+                            <div style={styles.label}>NETWORK AUDIT</div>
+                            <div style={styles.value}>{ipData}</div>
                         </div>
                     </div>
+
+                    <div style={styles.card}>
+                        <div style={{...styles.iconWrapper, background:'#fff1f2', color:'#e11d48'}}><FontAwesomeIcon icon={faLock} /></div>
+                        <div style={{flex: 1}}>
+                            <div style={styles.label}>STRENGTH CHECKER</div>
+                            <input type="password" placeholder="Type password..." style={styles.input} onChange={(e) => handlePassCheck(e.target.value)} />
+                        </div>
+                        <div style={{...styles.strengthText, color: passStrength.color}}>{passStrength.text}</div>
+                    </div>
+
+                    <div style={styles.card} onClick={generateSecurePass}>
+                        <div style={{...styles.iconWrapper, background:'#f0fdf4', color:'#16a34a'}}><FontAwesomeIcon icon={faKey} /></div>
+                        <div style={{flex: 1}}>
+                            <div style={styles.label}>KEY GENERATOR</div>
+                            <div style={styles.value}>GET SECURE PASSWORD</div>
+                        </div>
+                    </div>
+
+                    <div style={styles.card} onClick={checkLinkSafety}>
+                        <div style={{...styles.iconWrapper, background:'#faf5ff', color:'#9333ea'}}><FontAwesomeIcon icon={faLink} /></div>
+                        <div style={{flex: 1}}>
+                            <div style={styles.label}>PHISHING SHIELD</div>
+                            <div style={styles.value}>SCAN SUSPICIOUS URL</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {isChatOpen && (
+                <div style={styles.chatOverlay}>
+                    <div style={styles.chatHeader}>
+                        <FontAwesomeIcon icon={faArrowLeft} onClick={() => setIsChatOpen(false)} style={{cursor:'pointer'}} />
+                        <img src={FEMALE_AI_LOGO} style={styles.aiImg} alt="AI" />
+                        <div style={{flex: 1}}>
+                            <div style={{fontWeight: '800', fontSize: '15px'}}>CSAM ASSISTANT</div>
+                            <div style={{fontSize: '10px', color: '#34d399'}}>Dev: Ayan Ansari</div>
+                        </div>
+                        {isSpeaking && <FontAwesomeIcon icon={faStopCircle} onClick={stopSpeaking} style={{color:'#ef4444', fontSize:'20px'}} />}
+                    </div>
+
                     <div style={styles.chatBody}>
                         {messages.map((m, i) => (
-                            <div key={i} style={m.role === 'user' ? styles.userMsgRow : styles.aiMsgRow}>
+                            <div key={i} style={m.role === 'user' ? styles.userRow : styles.aiRow}>
                                 <div style={m.role === 'user' ? styles.userBubble : styles.aiBubble}>{m.text}</div>
                             </div>
                         ))}
-                        {isLoading && <div style={{...styles.aiBubble, fontSize:'12px'}}>Scanning Database...</div>}
                         <div ref={chatEndRef} />
                     </div>
-                    <form onSubmit={handleSend} style={styles.chatInput}>
-                        <input type="text" placeholder="Consult Ayan's AI..." value={inputValue} onChange={(e) => setInputValue(e.target.value)} style={styles.inputField} />
+
+                    <form onSubmit={handleSend} style={styles.inputArea}>
+                        <input style={styles.field} placeholder="Message Ayan's AI..." value={inputValue} onChange={(e) => setInputValue(e.target.value)} />
                         <button type="submit" style={styles.sendBtn}><FontAwesomeIcon icon={faPaperPlane} /></button>
                     </form>
                 </div>
@@ -198,38 +224,35 @@ const CSAMAssistAyanEdition = () => {
 };
 
 const styles = {
-    container: { background: '#ffffff', minHeight: '100vh', fontFamily: "'Inter', sans-serif", color: '#1e293b' },
-    nav: { display:'flex', justifyContent:'space-between', alignItems:'center', padding:'20px 80px', borderBottom:'1px solid #f1f5f9', background:'#fff', position:'sticky', top:0, zIndex:100 },
-    logoGroup: { display:'flex', alignItems:'center', gap:'10px' },
-    topIcon: { fontSize:'24px', color:'#2563EB' },
-    logoTitle: { fontWeight:900, fontSize:'22px' },
-    statusBadge: { display:'flex', alignItems:'center', gap:'8px', fontSize:'11px', fontWeight:700, background:'#f8fafc', padding:'8px 16px', borderRadius:'30px', border:'1px solid #e2e8f0' },
-    pulseDot: { width:'8px', height:'8px', background:'#22c55e', borderRadius:'50%' },
-    hero: { padding:'80px 20px', textAlign:'center' },
-    terminalTag: { display:'inline-block', background:'#eff6ff', color:'#2563EB', padding:'5px 12px', borderRadius:'6px', fontSize:'12px', fontWeight:700, marginBottom:'15px' },
-    heroMainTitle: { fontSize:'48px', fontWeight:900, marginBottom:'20px' },
-    heroDescription: { fontSize:'16px', color:'#64748b', maxWidth:'600px', margin:'0 auto 30px' },
-    mainBtn: { background:'#2563EB', color:'#fff', border:'none', padding:'15px 35px', borderRadius:'10px', fontWeight:700, cursor:'pointer' },
-    dashboard: { padding:'0 80px 40px' },
-    grid: { display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:'20px' },
-    card: { background:'#fff', padding:'20px', borderRadius:'16px', border:'1px solid #f1f5f9', cursor:'pointer', transition:'0.3s' },
-    cardIcon: { fontSize:'20px', color:'#2563EB', marginBottom:'12px' },
-    statusLine: { marginTop:'15px', minHeight:'10px' },
-    scanBar: { width:'100%', height:'3px', background:'#2563EB' },
-    successText: { color:'#059669', fontSize:'11px', fontWeight:800 },
-    runText: { color:'#94a3b8', fontSize:'11px', fontWeight:600 },
-    chatBox: { position:'fixed', bottom:'30px', right:'30px', width:'380px', height:'550px', background:'#fff', borderRadius:'24px', boxShadow:'0 25px 50px rgba(0,0,0,0.1)', display:'flex', flexDirection:'column', overflow:'hidden', zIndex:1000, border:'1px solid #e2e8f0' },
-    chatHeader: { background:'#2563EB', color:'#fff', padding:'15px 20px', display:'flex', justifyContent:'space-between', alignItems:'center' },
-    aiLogoImg: { width:'35px', height:'35px', borderRadius:'50%', background:'#fff' },
-    chatBody: { flex:1, padding:'20px', background:'#f8fafc', overflowY:'auto', display:'flex', flexDirection:'column', gap:'10px' },
-    userMsgRow: { alignSelf:'flex-end', maxWidth:'80%' },
-    aiMsgRow: { alignSelf:'flex-start', maxWidth:'80%' },
-    userBubble: { background:'#2563EB', color:'#fff', padding:'10px 15px', borderRadius:'15px 15px 0 15px', fontSize:'14px' },
-    aiBubble: { background:'#fff', border:'1px solid #e2e8f0', color:'#1e293b', padding:'10px 15px', borderRadius:'15px 15px 15px 0', fontSize:'14px' },
-    chatInput: { padding:'15px', borderTop:'1px solid #f1f5f9', display:'flex', gap:'8px' },
-    inputField: { flex:1, border:'1px solid #e2e8f0', borderRadius:'10px', padding:'8px 15px', outline:'none' },
-    sendBtn: { background:'#0f172a', color:'#fff', border:'none', padding:'0 15px', borderRadius:'10px', cursor:'pointer' },
-    fab: { position:'fixed', bottom:'30px', right:'30px', width:'60px', height:'60px', background:'#2563EB', color:'#fff', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'22px', cursor:'pointer', zIndex:1001 }
+    container: { background: '#f8fafc', minHeight: '100vh', fontFamily: 'sans-serif' },
+    nav: { display: 'flex', justifyContent: 'space-between', padding: '15px 20px', background: '#fff', borderBottom: '1px solid #e2e8f0', position:'sticky', top:0, zIndex:100 },
+    logoText: { fontWeight: '900', fontSize: '18px', marginLeft: '8px' },
+    status: { fontSize: '10px', fontWeight: 'bold', color: '#64748b', border: '1px solid #e2e8f0', padding: '4px 10px', borderRadius: '10px' },
+    hero: { textAlign: 'center', margin: '10px 0 30px 0' },
+    heroTitle: { fontSize: '32px', fontWeight: '800', color: '#0f172a', margin: '5px 0' },
+    heroSub: { fontSize: '14px', color: '#64748b', marginTop: '0' },
+    helpBox: { background: '#eff6ff', padding: '15px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #bfdbfe' },
+    helpTitle: { fontSize: '14px', fontWeight: 'bold', color: '#1e40af', margin: '0 0 5px 0' },
+    helpText: { fontSize: '12px', color: '#1e40af', margin: 0 },
+    grid: { display: 'flex', flexDirection: 'column', gap: '12px' },
+    card: { background: '#fff', padding: '18px', borderRadius: '15px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '12px', cursor:'pointer' },
+    iconWrapper: { width: '40px', height: '40px', background: '#eff6ff', color: '#2563EB', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+    label: { fontSize: '10px', fontWeight: 'bold', color: '#94a3b8' },
+    value: { fontSize: '14px', fontWeight: 'bold', color: '#1e293b' },
+    input: { width: '100%', border: 'none', background: '#f8fafc', padding: '8px', borderRadius: '8px', outline: 'none', fontSize: '12px', marginTop: '5px' },
+    strengthText: { fontSize: '10px', fontWeight: '900', minWidth: '70px', textAlign: 'right' },
+    chatOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: '#fff', display: 'flex', flexDirection: 'column', zIndex: 2000, height: '100dvh' },
+    chatHeader: { background: '#0f172a', color: '#fff', padding: '15px', display: 'flex', alignItems: 'center', gap: '12px' },
+    aiImg: { width: '35px', height: '35px', borderRadius: '50%', border: '2px solid #2563EB' },
+    chatBody: { flex: 1, padding: '15px', overflowY: 'auto', background: '#f1f5f9', display: 'flex', flexDirection: 'column', gap: '10px' },
+    userRow: { alignSelf: 'flex-end', maxWidth: '80%' },
+    aiRow: { alignSelf: 'flex-start', maxWidth: '80%' },
+    userBubble: { background: '#2563EB', color: '#fff', padding: '10px 14px', borderRadius: '15px 15px 0 15px', fontSize: '14px' },
+    aiBubble: { background: '#fff', color: '#1e293b', padding: '10px 14px', borderRadius: '15px 15px 15px 0', fontSize: '14px', border: '1px solid #e2e8f0' },
+    inputArea: { padding: '10px', background: '#fff', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '10px', paddingBottom: 'env(safe-area-inset-bottom, 10px)' },
+    field: { flex: 1, padding: '12px', borderRadius: '10px', background: '#f1f5f9', border: 'none', outline: 'none' },
+    sendBtn: { background: '#2563EB', color: '#fff', border: 'none', borderRadius: '10px', width: '50px' },
+    fab: { position: 'fixed', bottom: '25px', right: '20px', width: '60px', height: '60px', background: '#2563EB', color: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', boxShadow: '0 8px 20px rgba(37,99,235,0.4)' }
 };
 
 export default CSAMAssistAyanEdition;

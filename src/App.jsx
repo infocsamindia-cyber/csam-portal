@@ -1,62 +1,65 @@
-// src/App.jsx
-
-import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { auth } from './firebase'; // Firebase import zaruri hai
+import { onAuthStateChanged } from "firebase/auth";
 import './App.css'; 
 
-// ===================================
-// 1. Components (Header & Footer)
-// ===================================
 import Header from './components/Header'; 
 import Footer from './components/Footer'; 
-
-// ===================================
-// 2. Pages (Application Routes)
-// ===================================
-// Note: Assuming these files exist in './pages/' directory
 import Home from './pages/Home'; 
-import Frauds from './pages/Frauds'; 
-import SafetyTips from './pages/SafetyTips'; 
-import About from './pages/About'; 
+import Auth from './pages/Auth'; 
+import Frauds from './pages/Frauds';
+import SafetyTips from './pages/SafetyTips';
+import Resources from './pages/Resources';
 import Contact from './pages/Contact';
-import Resources from './pages/Resources'; 
+import About from './pages/About';
 
-/**
- * Main application layout component.
- * Sets up the fixed Header and Footer, and the dynamic content area (main) 
- * for routing based on URL. The 'App' class uses CSS to ensure a full-height, 
- * column-based layout, which is essential for mobile-first design (Header-Main-Footer stack).
- */
 function App() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Yeh effect check karega ki user pehle se logged in hai ya nahi
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false); // Check poora hone par loading band
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Jab tak check ho raha hai tab tak ek loading screen dikhayenge
+  if (loading) {
+    return (
+      <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#020617', color: '#fff' }}>
+        <h3>Verifying Security Credentials...</h3>
+      </div>
+    );
+  }
+
   return (
-    // .App CSS class ensures flex column layout and min-height: 100vh
     <div className="App">
+      {/* Header tabhi dikhega jab user session active hoga */}
+      {user && <Header />}
       
-      <Header />
-      
-      {/* The 'container' CSS class ensures the content is centered and 
-        has proper side padding, especially crucial for mobile view.
-      */}
       <main className="container"> 
         <Routes>
-          {/* Default Route */}
-          <Route path="/" element={<Home />} /> 
+          {/* Agar user login hai aur /auth par jane ki koshish kare toh Home par bhej do */}
+          <Route path="/auth" element={!user ? <Auth onLogin={() => setUser(auth.currentUser)} /> : <Navigate to="/" />} />
 
-          {/* Core Navigation Routes */}
-          <Route path="/frauds" element={<Frauds />} /> 
-          <Route path="/safety" element={<SafetyTips />} /> 
-          
-          {/* Information Routes */}
-          <Route path="/about" element={<About />} /> 
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/resources" element={<Resources />} />
+          {/* Protected Routes: Sirf login users ke liye */}
+          <Route path="/" element={user ? <Home /> : <Navigate to="/auth" />} /> 
+          <Route path="/frauds" element={user ? <Frauds /> : <Navigate to="/auth" />} /> 
+          <Route path="/safety" element={user ? <SafetyTips /> : <Navigate to="/auth" />} /> 
+          <Route path="/resources" element={user ? <Resources /> : <Navigate to="/auth" />} />
+          <Route path="/contact" element={user ? <Contact /> : <Navigate to="/auth" />} />
+          <Route path="/about" element={user ? <About /> : <Navigate to="/auth" />} />
 
-          {/* Optional: Add a 404/Not Found route here if needed */}
-          {/* <Route path="*" element={<div>404 Page Not Found</div>} /> */}
+          {/* Galat URL handle karne ke liye */}
+          <Route path="*" element={<Navigate to={user ? "/" : "/auth"} />} />
         </Routes>
       </main>
 
-      <Footer />
+      {user && <Footer />}
     </div>
   );
 }
