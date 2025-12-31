@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-    faPaperPlane, faHeadset, faLock, faArrowLeft, faGlobe, 
+import {
+    faPaperPlane, faHeadset, faLock, faArrowLeft, faGlobe,
     faShieldAlt, faCircle, faInfoCircle, faStopCircle,
     faLink, faKey, faUserCheck
 } from '@fortawesome/free-solid-svg-icons';
 
+// Naya sahi code:
 const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-const FEMALE_AI_LOGO = "https://cdn-icons-png.flaticon.com/512/4140/4140047.png"; 
+const FEMALE_AI_LOGO = "https://cdn-icons-png.flaticon.com/512/4140/4140047.png";
 
 const CSAMAssistAyanEdition = () => {
     const [isChatOpen, setIsChatOpen] = useState(false);
@@ -17,7 +18,7 @@ const CSAMAssistAyanEdition = () => {
     const [messages, setMessages] = useState([
         { role: 'ai', text: "Hello! I am CSAM Assistant, developed by Ayan Ansari. How can I help you with Cyber Security today?" }
     ]);
-    
+
     const [ipData, setIpData] = useState("Click to Scan");
     const [passStrength, setPassStrength] = useState({ text: "WAITING", color: "#94a3b8" });
     const [generatedPass, setGeneratedPass] = useState("");
@@ -52,15 +53,15 @@ const CSAMAssistAyanEdition = () => {
     const generateSecurePass = () => {
         const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
         let pass = "";
-        for(let i=0; i<12; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
+        for (let i = 0; i < 12; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
         setGeneratedPass(pass);
         alert("Generated Password: " + pass);
     };
 
     const checkLinkSafety = () => {
         const link = prompt("Enter URL to scan:");
-        if(!link) return;
-        if(link.includes("http://") || link.includes("bit.ly")) {
+        if (!link) return;
+        if (link.includes("http://") || link.includes("bit.ly")) {
             alert("⚠️ WARNING: This link looks suspicious (Unencrypted or Shortened).");
         } else {
             alert("✅ Secure: This link uses HTTPS and looks safe.");
@@ -86,20 +87,20 @@ const CSAMAssistAyanEdition = () => {
             const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method: "POST",
                 headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ 
-                    model: "llama-3.3-70b-versatile", 
+                body: JSON.stringify({
+                    model: "llama-3.3-70b-versatile",
                     messages: [
-                        { role: "system", content: "Your name is CSAM Assistant. You are developed by Ayan Ansari, who is a BCA student and a passionate Ethical Hacker/Cyber Security enthusiast. When someone asks about you or your developer, always mention Ayan Ansari and his background in BCA and Cyber Security with pride. Your goal is to provide expert security advice while maintaining the identity of Ayan's creation." }, 
+                        { role: "system", content: "Your name is CSAM Assistant. You are developed by Ayan Ansari, who is a BCA student and a passionate Ethical Hacker/Cyber Security enthusiast. When someone asks about you or your developer, always mention Ayan Ansari and his background in BCA and Cyber Security with pride. Your goal is to provide expert security advice while maintaining the identity of Ayan's creation." },
                         { role: "user", content: userMsg }
-                    ] 
+                    ]
                 })
             });
             const data = await res.json();
             const reply = data.choices[0].message.content;
             setMessages(prev => [...prev, { role: 'ai', text: reply }]);
             speak(reply);
-        } catch (err) { 
-            setMessages(prev => [...prev, { role: 'ai', text: "Error connecting to server." }]); 
+        } catch (err) {
+            setMessages(prev => [...prev, { role: 'ai', text: "Error connecting to server." }]);
         } finally { setIsLoading(false); }
     };
 
@@ -128,17 +129,17 @@ const CSAMAssistAyanEdition = () => {
 
             <nav style={styles.nav}>
                 <div style={styles.logoGroup}>
-                    <FontAwesomeIcon icon={faShieldAlt} style={{color:'#2563EB', fontSize:'22px'}} />
-                    <span style={styles.logoText}>AYAN<span style={{color:'#2563EB'}}>CORE</span></span>
+                    <FontAwesomeIcon icon={faShieldAlt} style={{ color: '#2563EB', fontSize: '22px' }} />
+                    <span style={styles.logoText}>AYAN<span style={{ color: '#2563EB' }}>CORE</span></span>
                 </div>
-                <div style={styles.status}><FontAwesomeIcon icon={faCircle} style={{color:'#22c55e', fontSize:'8px'}} /> ONLINE</div>
+                <div style={styles.status}><FontAwesomeIcon icon={faCircle} style={{ color: '#22c55e', fontSize: '8px' }} /> ONLINE</div>
             </nav>
 
-            <div style={{padding: '20px', paddingBottom: '100px'}}>
+            <div style={{ padding: '20px', paddingBottom: '100px' }}>
                 <header style={styles.hero}>
                     {/* Yahan par Header wala badge shift kar diya hai */}
                     <div className="dev-badge-home">
-                        <FontAwesomeIcon icon={faUserCheck} style={{marginRight:'8px', color:'#3b82f6'}} />
+                        <FontAwesomeIcon icon={faUserCheck} style={{ marginRight: '8px', color: '#3b82f6' }} />
                         DEVELOPED BY AYAN ANSARI
                     </div>
                     <h1 style={styles.heroTitle}>Security Portal</h1>
@@ -153,32 +154,32 @@ const CSAMAssistAyanEdition = () => {
                 <div style={styles.grid}>
                     <div style={styles.card} onClick={fetchIPInfo}>
                         <div style={styles.iconWrapper}><FontAwesomeIcon icon={faGlobe} /></div>
-                        <div style={{flex: 1}}>
+                        <div style={{ flex: 1 }}>
                             <div style={styles.label}>NETWORK AUDIT</div>
                             <div style={styles.value}>{ipData}</div>
                         </div>
                     </div>
 
                     <div style={styles.card}>
-                        <div style={{...styles.iconWrapper, background:'#fff1f2', color:'#e11d48'}}><FontAwesomeIcon icon={faLock} /></div>
-                        <div style={{flex: 1}}>
+                        <div style={{ ...styles.iconWrapper, background: '#fff1f2', color: '#e11d48' }}><FontAwesomeIcon icon={faLock} /></div>
+                        <div style={{ flex: 1 }}>
                             <div style={styles.label}>STRENGTH CHECKER</div>
                             <input type="password" placeholder="Type password..." style={styles.input} onChange={(e) => handlePassCheck(e.target.value)} />
                         </div>
-                        <div style={{...styles.strengthText, color: passStrength.color}}>{passStrength.text}</div>
+                        <div style={{ ...styles.strengthText, color: passStrength.color }}>{passStrength.text}</div>
                     </div>
 
                     <div style={styles.card} onClick={generateSecurePass}>
-                        <div style={{...styles.iconWrapper, background:'#f0fdf4', color:'#16a34a'}}><FontAwesomeIcon icon={faKey} /></div>
-                        <div style={{flex: 1}}>
+                        <div style={{ ...styles.iconWrapper, background: '#f0fdf4', color: '#16a34a' }}><FontAwesomeIcon icon={faKey} /></div>
+                        <div style={{ flex: 1 }}>
                             <div style={styles.label}>KEY GENERATOR</div>
                             <div style={styles.value}>GET SECURE PASSWORD</div>
                         </div>
                     </div>
 
                     <div style={styles.card} onClick={checkLinkSafety}>
-                        <div style={{...styles.iconWrapper, background:'#faf5ff', color:'#9333ea'}}><FontAwesomeIcon icon={faLink} /></div>
-                        <div style={{flex: 1}}>
+                        <div style={{ ...styles.iconWrapper, background: '#faf5ff', color: '#9333ea' }}><FontAwesomeIcon icon={faLink} /></div>
+                        <div style={{ flex: 1 }}>
                             <div style={styles.label}>PHISHING SHIELD</div>
                             <div style={styles.value}>SCAN SUSPICIOUS URL</div>
                         </div>
@@ -189,13 +190,13 @@ const CSAMAssistAyanEdition = () => {
             {isChatOpen && (
                 <div style={styles.chatOverlay}>
                     <div style={styles.chatHeader}>
-                        <FontAwesomeIcon icon={faArrowLeft} onClick={() => setIsChatOpen(false)} style={{cursor:'pointer'}} />
+                        <FontAwesomeIcon icon={faArrowLeft} onClick={() => setIsChatOpen(false)} style={{ cursor: 'pointer' }} />
                         <img src={FEMALE_AI_LOGO} style={styles.aiImg} alt="AI" />
-                        <div style={{flex: 1}}>
-                            <div style={{fontWeight: '800', fontSize: '15px'}}>CSAM ASSISTANT</div>
-                            <div style={{fontSize: '10px', color: '#34d399'}}>Dev: Ayan Ansari</div>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: '800', fontSize: '15px' }}>CSAM ASSISTANT</div>
+                            <div style={{ fontSize: '10px', color: '#34d399' }}>Dev: Ayan Ansari</div>
                         </div>
-                        {isSpeaking && <FontAwesomeIcon icon={faStopCircle} onClick={stopSpeaking} style={{color:'#ef4444', fontSize:'20px'}} />}
+                        {isSpeaking && <FontAwesomeIcon icon={faStopCircle} onClick={stopSpeaking} style={{ color: '#ef4444', fontSize: '20px' }} />}
                     </div>
 
                     <div style={styles.chatBody}>
@@ -225,7 +226,7 @@ const CSAMAssistAyanEdition = () => {
 
 const styles = {
     container: { background: '#f8fafc', minHeight: '100vh', fontFamily: 'sans-serif' },
-    nav: { display: 'flex', justifyContent: 'space-between', padding: '15px 20px', background: '#fff', borderBottom: '1px solid #e2e8f0', position:'sticky', top:0, zIndex:100 },
+    nav: { display: 'flex', justifyContent: 'space-between', padding: '15px 20px', background: '#fff', borderBottom: '1px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 100 },
     logoText: { fontWeight: '900', fontSize: '18px', marginLeft: '8px' },
     status: { fontSize: '10px', fontWeight: 'bold', color: '#64748b', border: '1px solid #e2e8f0', padding: '4px 10px', borderRadius: '10px' },
     hero: { textAlign: 'center', margin: '10px 0 30px 0' },
@@ -235,7 +236,7 @@ const styles = {
     helpTitle: { fontSize: '14px', fontWeight: 'bold', color: '#1e40af', margin: '0 0 5px 0' },
     helpText: { fontSize: '12px', color: '#1e40af', margin: 0 },
     grid: { display: 'flex', flexDirection: 'column', gap: '12px' },
-    card: { background: '#fff', padding: '18px', borderRadius: '15px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '12px', cursor:'pointer' },
+    card: { background: '#fff', padding: '18px', borderRadius: '15px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' },
     iconWrapper: { width: '40px', height: '40px', background: '#eff6ff', color: '#2563EB', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
     label: { fontSize: '10px', fontWeight: 'bold', color: '#94a3b8' },
     value: { fontSize: '14px', fontWeight: 'bold', color: '#1e293b' },
